@@ -1,8 +1,7 @@
-#![feature(map_first_last)]
 use std::{collections::{BTreeSet, BinaryHeap, HashMap, HashSet}, error::Error, fs::File, io::BufWriter, path::Path};
 
 use petgraph::{Graph, visit::IntoNodeReferences};
-use png::Encoder;
+use png::{Encoder};
 
 use minecraft_schematics::{BlockState, Region, Schematic};
 
@@ -44,10 +43,10 @@ impl PartialOrd for Chunk {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let offset: (i32, i32) = (-20, 20);
+    let offset: (i32, i32) = (-20, 200);
     let width: i32 = 50;
-    let cluster_size: u64 = 810;
-    let hash_size: u64 = 2048;
+    let cluster_size: u64 = 500;
+    let hash_size: u64 = 4096;
 
     assert!(hash_size.is_power_of_two());
     let mask = hash_size - 1;
@@ -91,6 +90,8 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     println!("Found {} valid cluster chunks!", cluster_chunks.len());
     println!("Searched area: {} x {} chunks", size.0, size.1);
+
+
 
 
     println!("Generating tree...");
@@ -150,7 +151,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
     }
 
-    let path = Path::new("out/chunks.png");
+    let path = Path::new("chunks.png");
     let file = File::create(path)?;
     let buffer = BufWriter::new(file);
     let mut encoder = Encoder::new(buffer, size.0 as u32, size.1 as u32);
@@ -163,6 +164,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("Generating schematic...");
     let chest = BlockState::new("minecraft:chest");
     let concrete = BlockState::new("minecraft:concrete");
+    let hopper = BlockState::new("minecraft:hopper");
+    let dropper = BlockState::new("minecraft:dropper");
     let mut region = Region::new("chests");
 
     let start = graph[graph.node_indices().min_by_key(|&i| dist(&(graph[i].x, graph[i].z), &offset)).unwrap()];
@@ -210,16 +213,28 @@ fn main() -> Result<(), Box<dyn Error>> {
                 chunks_connected.insert(pos);
                 chunks_to_explore.insert(pos);
             }
+
+            let pos = (chunk.0, chunk.1);
+            if let Some(chunk)  = chunks.get(&pos) {
+                if let ChunkType::Target = chunk {
+                    let hopper_pos = (pos.0 * 16 + 9, 0, pos.1 * 16 + 7);
+                    let dropper_pos = (pos.0 * 16 + 9, 1, pos.1 * 16 + 7);
+                    region.set_block_state(hopper_pos.into(), &hopper);
+                    region.set_block_state(dropper_pos.into(), &dropper);
+                }
+            }
         }
     }
 
-    let path = Path::new("out/chunks.litematic");
+    let pathstr = format!("{}_{}_{}.litematic", cluster_size, offset.0, offset.1);
+    let path = Path::new(&pathstr);
     let file = File::create(path)?;
     let mut buffer = BufWriter::new(file);
     let mut schematic = Schematic::new();
     schematic.set_name("ChunkGrid");
     schematic.add_region(region);
     schematic.write_to(&mut buffer)?;
+    println!("Set Schematic Placement and Region Placement Coordinates to {}, {}, {} ", (offset.0 * 16) + 8, 200, (offset.1 * 16) + 7);
 
     println!("Done!");
 
