@@ -157,8 +157,6 @@ impl<'a> Region<'a> {
         let palette_tags = palette_tags.into_iter().map(|t| t.unwrap()).collect::<Vec<_>>();
         let bits = (64 - (palette.len() as u64 - 1).leading_zeros()).min(4) as u32;
 
-        println!("{}", bits);
-
         let mut block_states: Vec<i64> = vec![0; (size.x as usize * size.y as usize * size.z as usize * bits as usize + 63) / 64];
 
         for (&pos, &state) in &blocks {

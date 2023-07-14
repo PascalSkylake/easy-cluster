@@ -1,6 +1,6 @@
-use std::{collections::{BTreeSet, BinaryHeap, HashMap, HashSet}, error::Error, fs::File, io::BufWriter, path::Path};
+use std::{collections::{BTreeSet, BinaryHeap, HashMap, HashSet}, error::Error, fs::File, io::BufWriter, path::Path, convert::TryInto};
 
-use petgraph::{Graph, visit::IntoNodeReferences};
+use petgraph::{data::Element, algo::min_spanning_tree, Graph, stable_graph::NodeIndex, visit::IntoNodeReferences};
 use png::{Encoder};
 
 use minecraft_schematics::{BlockState, Region, Schematic};
@@ -44,9 +44,9 @@ impl PartialOrd for Chunk {
 
 fn main() -> Result<(), Box<dyn Error>> {
     let offset: (i32, i32) = (-20, 200);
-    let width: i32 = 50;
-    let cluster_size: u64 = 500;
-    let hash_size: u64 = 4096;
+    let width: i32 = 60;
+    let cluster_size: u64 = 6000;
+    let hash_size: u64 = 16384;
 
     assert!(hash_size.is_power_of_two());
     let mask = hash_size - 1;
@@ -86,6 +86,29 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
     }
 
+    let mut graph = Graph::<Chunk, (), _>::new_undirected();
+    // Add all chunks from cluster_chunks to the graph
+    for chunk in cluster_chunks {
+        graph.add_node(chunk);
+    }
+
+    let mst = min_spanning_tree(&graph);
+
+    for element in mst {
+        match element {
+            Element::Node { weight } => {
+                // Handle node
+                // You can access the node weight using 'weight' variable
+            }
+            Element::Edge { source, target, weight } => {
+                // Handle edge
+                // You can access the source, target, and edge weight
+                // using 'source', 'target', and 'weight' variables respectively
+                &graph.add_edge(NodeIndex::new(source), NodeIndex::new(target), ());
+            }
+        }
+    }
+
     let size = (length, width);
 
     println!("Found {} valid cluster chunks!", cluster_chunks.len());
@@ -112,6 +135,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
         cluster_chunks.remove(&chunk);
     }
+    
 
     println!("Collecting chunks...");
     let mut chunks = HashMap::new();
